@@ -64,7 +64,6 @@ public:
         std::cout << "STARTING CLIENT SIDE" << std::endl;
 
         serverSocket = initsSocket();
-        std::cout << serverSocket << std::endl;
         connectToSocket(serverSocket, SERVER_PORT);
 
         std::cout << "CLIENT-SIDE: Connected to the server." << std::endl;
@@ -72,12 +71,13 @@ public:
 
     void passingData(){
         char buffer[sizeof(DataPackage)];
+        static int counterRandom = 0;
         int bytesRead;
         std::cout << "Tryinjg to receive data from client" << std::endl;
 
         while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0)
         {
-            if (rand() % 25 == 0) { // approximetily on 25 sending buffer will be changed
+            if (++counterRandom > 25) {
                 makeRandomChanges(buffer, sizeof(DataPackage));
             }
 
