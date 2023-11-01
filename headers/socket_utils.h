@@ -1,8 +1,18 @@
 #pragma once 
 
+#ifdef __WIN32
 #include <winsock2.h>
 #include <windows.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
+#endif
+
 #include <iostream>
+#include "other.h"
 
 #ifndef INVALID_SOCKET
 #define INVALID_SOCKET (-1)
@@ -14,7 +24,7 @@
 
 #define SOCKET_ERROR (-1)
 #define IP_SERVER "127.0.0.1"
-#define PROXY_PORT 5656
+#define PROXY_PORT 8088
 #define SERVER_PORT 5555
 
 #pragma pack(1)
@@ -41,6 +51,8 @@ public:
     void listenToSocket(int socket);
 
     void connectToSocket(int socket, int port);
+
+    void closeSocket(int socket);
 
     unsigned int calculateXORChecksum(const char *data, size_t dataLength, unsigned long number);
 };

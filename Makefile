@@ -8,13 +8,13 @@ endif
 
 all: client server proxy
 
-client: client.cpp src/socket_utils.cpp
+client: client.cpp src/*.cpp
 	$(CC) $^ -o $@ $(CFLAGS)
 
-server: server.cpp src/socket_utils.cpp
+server: server.cpp src/*.cpp
 	$(CC) $^ -o $@ $(CFLAGS)
 
-proxy: proxy.cpp src/socket_utils.cpp
+proxy: proxy.cpp src/*.cpp
 	$(CC) $^ -o $@ $(CFLAGS)
 
 clean:

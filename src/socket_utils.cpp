@@ -18,7 +18,7 @@ int SocketUtil::initsSocket()
     if (clientSocket == INVALID_SOCKET)
     {
         std::cerr << "Error creating socket." << std::endl;
-        WSACleanup();
+        cleanupWinsock();
         exit(1);
     }
     return clientSocket;
@@ -40,8 +40,8 @@ void SocketUtil::bindSocket(int socket, int port)
     if (bind(socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
         std::cerr << "Error binding socket." << std::endl;
-        closesocket(socket);
-        WSACleanup();
+        closeSocket(socket);
+        cleanupWinsock();
         exit(1);
     }
 };
@@ -51,8 +51,8 @@ void SocketUtil::listenToSocket(int socket)
     if (listen(socket, 1) == SOCKET_ERROR)
     {
         std::cerr << "Error listening for connections." << std::endl;
-        closesocket(socket);
-        WSACleanup();
+        closeSocket(socket);
+        cleanupWinsock();
         exit(1);
     }
 };
@@ -65,15 +65,24 @@ void SocketUtil::connectToSocket(int socket, int port)
     {
         if (tryiesCount > 5) {
             std::cerr << "Error connecting to the server." << std::endl;
-            closesocket(socket);
-            WSACleanup();
+            closeSocket(socket);
+            cleanupWinsock();
             exit(1);
         }
         
         std::cout << "Try connecting to server again..." << std::endl;
-        Sleep(1000);
+        SleepS(1);
     }
 };
+
+void SocketUtil::closeSocket(int socket)
+{
+#ifdef __WIN32
+    closesocket(socket);
+#else
+    close(socket);
+#endif
+}
 
 void SocketUtil::cleanupWinsock() {
     #ifdef __WIN32

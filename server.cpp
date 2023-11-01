@@ -20,13 +20,18 @@ public:
     void runServer() {
         std::cout << "WE ARE IN RUNSERVER" << std::endl;
         sockaddr_in clientAddr;
+        // place this to seperate function
+        #ifdef __WIN32
         int clientAddrLen = sizeof(clientAddr);
+        #else
+        socklen_t clientAddrLen = sizeof(clientAddr);
+        #endif
         clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrLen);
 
         if (clientSocket == INVALID_SOCKET)
         {
             std::cerr << "Error accepting connection." << std::endl;
-            Sleep(3000);
+            SleepS(3);
             return;
         }
 
@@ -44,7 +49,7 @@ public:
             
             if (bytesReceived == -1) {
                 std::cerr << "Failed to receive data package." << std::endl;
-                closesocket(clientSocket);
+                closeSocket(clientSocket);
                 return;
             }
 
@@ -65,8 +70,8 @@ public:
     };
 
     ~Server(){
-        closesocket(serverSocket);
-        WSACleanup();
+        closeSocket(serverSocket);
+        cleanupWinsock();
     };
 
 	Server(const Server &) = delete;

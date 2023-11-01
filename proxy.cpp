@@ -46,7 +46,12 @@ public:
 
         std::clog << "Proxy is listening on port " << PROXY_PORT << "..." << std::endl;
         sockaddr_in clientAddr;
+        // place this to seperate function
+        #ifdef __WIN32
         int clientAddrLen = sizeof(clientAddr);
+        #else
+        socklen_t clientAddrLen = sizeof(clientAddr);
+        #endif
         clientSocket = accept(proxySocket, (struct sockaddr *)&clientAddr, &clientAddrLen);
 
         if (clientSocket == INVALID_SOCKET)
@@ -93,9 +98,9 @@ public:
 
     ~Proxy()
     {
-        closesocket(clientSocket);
-        closesocket(serverSocket);
-        closesocket(proxySocket);
+        closeSocket(clientSocket);
+        closeSocket(serverSocket);
+        closeSocket(proxySocket);
     }
 private:
     int clientSocket;

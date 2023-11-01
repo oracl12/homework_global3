@@ -1,6 +1,7 @@
 // should sent data, lets say buffer on 32 elements, + unsindned long int - checksum in bytes??
 
 #include "headers/socket_utils.h"
+#include "headers/other.h"
 
 class Client : private SocketUtil 
 {
@@ -30,20 +31,20 @@ public:
             int bytesSent = send(clientSocket, buffer, sizeof(buffer), 0);
             if (bytesSent <= 0)
             {
-                Sleep(3000);
+                SleepS(3);
                 std::cerr << "SERVER: dead" << std::endl;
                 break;
             }
 
-            Sleep(200);
+            SleepS(0.2);
             std::cout << "SUCCESSfULLY SENT" << std::endl;
         }
     };
 
     ~Client(){
         std::cout << "CLIENT: SHUTTING DOWN" << std::endl;
-        closesocket(clientSocket);
-        WSACleanup();
+        closeSocket(clientSocket);
+        cleanupWinsock();
     };
 
     Client(const Client &) = delete;
