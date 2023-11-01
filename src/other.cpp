@@ -1,10 +1,10 @@
 #include "../headers/other.h"
 
-void SleepS(float seconds)
+void SleepS(int miliseconds)
 {
     #ifdef __WIN32
-    Sleep(seconds * 1000);
+    Sleep(miliseconds);
     #else
-    sleep(seconds);
+    usleep(miliseconds * 1000);
     #endif
 }

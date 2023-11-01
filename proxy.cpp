@@ -18,7 +18,7 @@ public:
         if (proxySocket == -1)
         {
             std::cerr << "Proxy server socket creation failed." << std::endl;
-            exit(1);
+            exit(1);// TODO: remove exits and handle end of program better
         }
 
         sockaddr_in proxyAddr;
@@ -30,17 +30,13 @@ public:
         if (bind(proxySocket, (struct sockaddr *)&proxyAddr, sizeof(proxyAddr)) == -1)
         {
             std::cerr << "Proxy server binding failed." << std::endl;
-            exit(1);
+            exit(1);// TODO: remove exits and handle end of program better
         }
     }
 
     void listenClient()
     {
         std::clog << "STARTING PROXY SERVER" << std::endl;
-
-        proxySocket = initsSocket();
-
-        bindSocket(proxySocket, PROXY_PORT);
 
         listenToSocket(proxySocket);
 
@@ -81,7 +77,7 @@ public:
 
         while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0)
         {
-            if (rand() % 15 == 0) { // approximetily on 15 sending buffer will be changed
+            if (rand() % 25 == 0) { // approximetily on 25 sending buffer will be changed
                 makeRandomChanges(buffer, sizeof(DataPackage));
             }
 

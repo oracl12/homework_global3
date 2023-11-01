@@ -4,4 +4,4 @@
 #include <unistd.h>
 #endif
 
-void SleepS(float seconds);
+void SleepS(int miliseconds);

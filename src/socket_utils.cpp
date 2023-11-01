@@ -7,7 +7,7 @@ void SocketUtil::WSAStartUp()
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
         std::cerr << "Failed to initialize Winsock." << std::endl;
-        exit(1);
+        exit(1);// TODO: remove exits and handle end of program better
     }
     #endif
 }
@@ -19,7 +19,7 @@ int SocketUtil::initsSocket()
     {
         std::cerr << "Error creating socket." << std::endl;
         cleanupWinsock();
-        exit(1);
+        exit(1);// TODO: remove exits and handle end of program better
     }
     return clientSocket;
 };
@@ -40,6 +40,7 @@ void SocketUtil::bindSocket(int socket, int port)
     if (bind(socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
         std::cerr << "Error binding socket." << std::endl;
+        std::cerr << strerror(errno) << std::endl;
         closeSocket(socket);
         cleanupWinsock();
         exit(1);
@@ -53,7 +54,7 @@ void SocketUtil::listenToSocket(int socket)
         std::cerr << "Error listening for connections." << std::endl;
         closeSocket(socket);
         cleanupWinsock();
-        exit(1);
+        exit(1);// TODO: remove exits and handle end of program better
     }
 };
 
@@ -67,11 +68,11 @@ void SocketUtil::connectToSocket(int socket, int port)
             std::cerr << "Error connecting to the server." << std::endl;
             closeSocket(socket);
             cleanupWinsock();
-            exit(1);
+            exit(1);// TODO: remove exits and handle end of program better
         }
         
         std::cout << "Try connecting to server again..." << std::endl;
-        SleepS(1);
+        SleepS(1000);
     }
 };
 

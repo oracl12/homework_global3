@@ -31,12 +31,12 @@ public:
             int bytesSent = send(clientSocket, buffer, sizeof(buffer), 0);
             if (bytesSent <= 0)
             {
-                SleepS(3);
+                SleepS(3000);
                 std::cerr << "SERVER: dead" << std::endl;
                 break;
             }
 
-            SleepS(0.2);
+            SleepS(200);
             std::cout << "SUCCESSfULLY SENT" << std::endl;
         }
     };

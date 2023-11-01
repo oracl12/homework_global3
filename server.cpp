@@ -31,7 +31,7 @@ public:
         if (clientSocket == INVALID_SOCKET)
         {
             std::cerr << "Error accepting connection." << std::endl;
-            SleepS(3);
+            SleepS(3000);
             return;
         }
 
@@ -64,7 +64,7 @@ public:
 
             if (calculateXORChecksum(receivedData.buffer, strlen(receivedData.buffer), receivedData.number) != receivedData.checksum) {
                 std::cout << "Checksum doesnt match" << std::endl;
-                exit(1);
+                exit(1); // TODO: remove exits and handle end of program better
             }
         }
     };

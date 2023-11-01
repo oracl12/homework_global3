@@ -1,9 +1,9 @@
 CC := g++
 
 ifeq ($(OS),Windows_NT)
-CFLAGS := -lws2_32 -std=c++11
+CFLAGS := -lws2_32 -std=c++17
 else
-CFLAGS := -std=c++11 -pthread
+CFLAGS := -std=c++17 -pthread
 endif
 
 all: client server proxy
