@@ -1,0 +1,7 @@
+# TODO: dont forget to push Makefile will be also shadowed
+# *
+# !*/
+# !*.*
+
+.vscode
+*.exe
