@@ -12,6 +12,7 @@
 #endif
 
 #include <iostream>
+#include <ctime>
 #include "other.h"
 
 #ifndef INVALID_SOCKET
@@ -26,18 +27,21 @@
 #define IP_SERVER "127.0.0.1"
 #define PROXY_PORT 8088
 #define SERVER_PORT 5555
+#define MAX_BUFFER_SIZE 32
 
 #pragma pack(1)
 struct DataPackage {
     unsigned long number;
     unsigned int checksum;
-    char buffer[32];
+    char buffer[MAX_BUFFER_SIZE];
 };
 #pragma pack()
 
 class SocketUtil
 {
 public:
+    virtual void forceCleanUpProgram();
+
     void WSAStartUp();
 
     void cleanupWinsock();

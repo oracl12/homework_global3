@@ -1,3 +1,5 @@
+#pragma once 
+
 #ifdef __WIN32
 #include <windows.h>
 #else

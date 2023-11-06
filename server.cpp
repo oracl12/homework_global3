@@ -20,7 +20,7 @@ public:
     void runServer() {
         std::cout << "WE ARE IN RUNSERVER" << std::endl;
         sockaddr_in clientAddr;
-        // place this to seperate function
+
         #ifdef __WIN32
         int clientAddrLen = sizeof(clientAddr);
         #else
@@ -55,22 +55,44 @@ public:
 
             memcpy(&receivedData, buffer, sizeof(DataPackage));
 
-            // Print the received data
             std::cout << "Received buffer: " << receivedData.buffer << std::endl;
             std::cout << "Received number: " << receivedData.number << std::endl;
             std::cout << "Received checksum: " << receivedData.checksum << std::endl;
 
-            // check if matches
+            char responceBuffer[sizeof(bool) + 1];
 
+            // check if matches
             if (calculateXORChecksum(receivedData.buffer, strlen(receivedData.buffer), receivedData.number) != receivedData.checksum) {
+                strcpy(responceBuffer, "0");
                 std::cout << "Checksum doesnt match" << std::endl;
-                exit(1); // TODO: remove exits and handle end of program better
+            } else {
+                strcpy(responceBuffer, "1");
             }
+
+            if (send(clientSocket, responceBuffer, sizeof(responceBuffer), 0) > 0)
+            {
+                std::cout << "Successfully sent responce back" << std::endl;
+            } else {
+                std::cout << "Client has no responce" << std::endl;
+                break;
+            };
+
         }
     };
 
-    ~Server(){
+    void forceCleanUpProgram() override
+    {
+        std::cout << "SERVER: SHUTTING DOWN FORCEFULLY" << std::endl;
         closeSocket(serverSocket);
+        closeSocket(clientSocket);
+        cleanupWinsock();
+        exit(1);
+    }
+
+    ~Server(){
+        std::cout << "SERVER: SHUTTING DOWN NORMALLY" << std::endl;
+        closeSocket(serverSocket);
+        closeSocket(clientSocket);
         cleanupWinsock();
     };
 
