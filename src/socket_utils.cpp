@@ -1,18 +1,22 @@
 #include "../headers/socket_utils.h"
 
-void SocketUtil::forceCleanUpProgram()
-{
-    // ovveride in childs
-}
+const char* SocketUtil::SOCKET_ERRORS_TEXT[] = {
+        "WINSOCK_INIT_FAILURE",
+        "INIT_FAILURE",
+        "BINDING_ERROR",
+        "LISTENING_ERROR",
+        "ACCEPTANCE_FAILURE",
+        "CONNECTION_FAILURE",
+        "CLEANUP_WINSOCK_ERROR"
 
+};
 void SocketUtil::WSAStartUp()
 {
     #ifdef __WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
-        std::cerr << "Failed to initialize Winsock." << std::endl;
-        forceCleanUpProgram();
+        throw SOCKET_ERRORS::WINSOCK_INIT_FAILURE;
     }
     #endif
 }
@@ -22,8 +26,7 @@ int SocketUtil::initsSocket()
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocket == INVALID_SOCKET)
     {
-        std::cerr << "Error creating socket." << std::endl;
-        forceCleanUpProgram();
+        throw SOCKET_ERRORS::INIT_FAILURE;
     }
     return clientSocket;
 };
@@ -43,8 +46,7 @@ void SocketUtil::bindSocket(int socket, int port)
 
     if (bind(socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
-        std::cerr << "Error binding socket." << std::endl;
-        forceCleanUpProgram();
+        throw SOCKET_ERRORS::BINDING_ERROR;
     }
 };
 
@@ -52,10 +54,26 @@ void SocketUtil::listenToSocket(int socket)
 {
     if (listen(socket, 1) == SOCKET_ERROR)
     {
-        std::cerr << "Error listening for connections." << std::endl;
-        forceCleanUpProgram();
+        throw SOCKET_ERRORS::LISTENING_ERROR;
     }
 };
+
+int SocketUtil::acceptConnection(int socket)
+{
+    sockaddr_in clientAddr;
+
+    #ifdef __WIN32
+    int clientAddrLen = sizeof(clientAddr);
+    #else
+    socklen_t clientAddrLen = sizeof(clientAddr);
+    #endif
+    int clientSocket = accept(socket, (struct sockaddr *)&clientAddr, &clientAddrLen);
+    if (clientSocket == INVALID_SOCKET)
+    {
+        throw SOCKET_ERRORS::ACCEPTANCE_FAULURE;
+    }
+    return clientSocket;
+}
 
 void SocketUtil::connectToSocket(int socket, int port)
 {
@@ -63,13 +81,13 @@ void SocketUtil::connectToSocket(int socket, int port)
     int tryiesCount = 0;
     while (connect(socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
-        if (tryiesCount > 5) {
-            std::cerr << "Error connecting to the server." << std::endl;
-            forceCleanUpProgram();
+        if (tryiesCount > 4) {
+            throw SOCKET_ERRORS::CONNECTION_FAILURE;
         }
         
-        std::cout << "Try connecting to server again..." << std::endl;
-        SleepS(1000);
+        std::cout << "SocketUtils: Try connecting to server again..." << std::endl;
+        SleepS(150);
+        tryiesCount++;
     }
 };
 
@@ -85,8 +103,7 @@ void SocketUtil::closeSocket(int socket)
 void SocketUtil::cleanupWinsock() {
     #ifdef __WIN32
     if (WSACleanup() == SOCKET_ERROR) {
-        std::cerr << "WSACleanup failed: " << WSAGetLastError() << std::endl;
-        forceCleanUpProgram();
+        throw SOCKET_ERRORS::CLEANUP_WINSOCK_ERROR;
     }
     #endif
 }

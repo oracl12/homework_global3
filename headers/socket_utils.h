@@ -13,6 +13,9 @@
 
 #include <iostream>
 #include <ctime>
+#include <vector>
+#include <thread>
+#include <mutex>
 #include "other.h"
 
 #ifndef INVALID_SOCKET
@@ -40,8 +43,6 @@ struct DataPackage {
 class SocketUtil
 {
 public:
-    virtual void forceCleanUpProgram();
-
     void WSAStartUp();
 
     void cleanupWinsock();
@@ -54,9 +55,23 @@ public:
 
     void listenToSocket(int socket);
 
+    int acceptConnection(int socket);
+
     void connectToSocket(int socket, int port);
 
-    void closeSocket(int socket);
+    static void closeSocket(int socket);
 
     unsigned int calculateXORChecksum(const char *data, size_t dataLength, unsigned long number);
+
+    static const char* SOCKET_ERRORS_TEXT[7];
+
+    enum SOCKET_ERRORS {
+        WINSOCK_INIT_FAILURE,
+        INIT_FAILURE,
+        BINDING_ERROR,
+        LISTENING_ERROR,
+        ACCEPTANCE_FAULURE,
+        CONNECTION_FAILURE,
+        CLEANUP_WINSOCK_ERROR
+    };
 };

@@ -1,4 +1,5 @@
 #include "headers/socket_utils.h"
+#include "headers/ctrl_handler.h"
 
 class Proxy : private SocketUtil
 {
@@ -8,49 +9,56 @@ public:
         WSAStartUp();
         proxySocket = initsSocket();
         bindSocket(proxySocket, PROXY_PORT);
+        workers = new std::vector<ThreadStructure>();
     }
 
-    void listenClient()
+    void startUp()
     {
-        std::clog << "STARTING PROXY SERVER" << std::endl;
+        std::clog << "PROXY: STARTING" << std::endl;
 
-        listenToSocket(proxySocket);
+        while (!ctrlCClicked.load()) {
+            listenToSocket(proxySocket);
 
-        std::clog << "Proxy is listening on port " << PROXY_PORT << "..." << std::endl;
-        sockaddr_in clientAddr;
-        #ifdef __WIN32
-        int clientAddrLen = sizeof(clientAddr);
-        #else
-        socklen_t clientAddrLen = sizeof(clientAddr);
-        #endif
-        clientSocket = accept(proxySocket, (struct sockaddr *)&clientAddr, &clientAddrLen);
+            std::clog << "Proxy: listening on port " << PROXY_PORT << "..." << std::endl;
 
-        if (clientSocket == INVALID_SOCKET)
-        {
-            std::cerr << "Error accepting connection." << std::endl;
-            return;
+            int clientSocket = acceptConnection(proxySocket);
+
+            if (clientSocket == INVALID_SOCKET)
+            {
+                std::cerr << "Proxy: Error accepting connection." << std::endl;
+                return;
+            }
+
+            std::clog << "Proxy: client connected." << std::endl;
+
+            int serverSocket = connectToServer();
+
+            workers->push_back( { std::thread(passingData, this, std::ref(clientSocket), std::ref(serverSocket)), clientSocket, serverSocket });
         }
-
-        std::clog << "Client connected." << std::endl;
     }
 
-    void connectToServer()
+    int connectToServer()
     {
         std::cout << "STARTING CLIENT SIDE" << std::endl;
 
-        serverSocket = initsSocket();
+        int serverSocket = initsSocket();
         connectToSocket(serverSocket, SERVER_PORT);
 
         std::cout << "CLIENT-SIDE: Connected to the server." << std::endl;
+
+        return serverSocket;
     }
 
-    void passingData(){
+    void passingData(int& clientSocket, int& serverSocket){
         char buffer[sizeof(DataPackage)];
         char responceBuffer[sizeof(bool) + 1];
         int bytesRead;
         while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0)
         {
-            std::cout << "Has received data from client" << std::endl;
+            if (ctrlCClicked.load()) {
+                break;
+            }
+            std::cout << "Proxy: has received data from client" << std::endl;
 
             if (shouldIChangeVariable()) {
                 makeRandomChanges(buffer, sizeof(DataPackage));
@@ -58,60 +66,69 @@ public:
 
             if (send(serverSocket, buffer, bytesRead, 0) > 0)
             {
-                std::cout << "Success sent package to server" << std::endl;
+                std::cout << "Proxy: Success sent package to server" << std::endl;
             } else {
-                std::cout << "Server has no responce" << std::endl;
+                std::cout << "Proxy: Server has no responce" << std::endl;
                 break;
             };
 
             // start receiving from server
             if (recv(serverSocket, responceBuffer, sizeof(responceBuffer), 0) > 0)
             {
-                std::cout << "Has received responce from server" << std::endl;
+                std::cout << "Proxy: Has received responce from server" << std::endl;
             } else {
-                std::cout << "Server has no responce" << std::endl;
+                std::cout << "Proxy: Server has no responce" << std::endl;
             }
 
             // start sending to client
             if (send(clientSocket, responceBuffer, sizeof(responceBuffer), 0) > 0)
             {
-                std::cout << "Successfully pass server responce to client" << std::endl;
+                std::cout << "Proxy: Successfully pass server responce to client" << std::endl;
             } else {
-                std::cout << "Client has no responce" << std::endl;
+                std::cout << "Proxy: Client has no responce" << std::endl;
             }
 
-            std::cout << "------------ Iteration end ------------" << std::endl;
+            std::cout << "------------ Package life ending ------------" << std::endl;
         }
-    }
-
-    void forceCleanUpProgram() override
-    {
-        std::cout << "SERVER: SHUTTING DOWN FORCEFULLY" << std::endl;
-        closeSocket(clientSocket);
-        closeSocket(serverSocket);
-        closeSocket(proxySocket);
-        cleanupWinsock();
-        exit(1);
     }
 
     ~Proxy()
     {
-        std::cout << "SERVER: SHUTTING DOWN NORMALLY" << std::endl;
-        closeSocket(clientSocket);
-        closeSocket(serverSocket);
+        std::cout << "PROXY: SHUTTING DOWN NORMALLY" << std::endl;
+
+        for (auto& threadStruct: *workers) {
+            closeSocket(threadStruct.clientSocket);
+            closeSocket(threadStruct.serverSocket); // place outside
+            if (threadStruct.thread.joinable()) {
+                threadStruct.thread.join();
+            }
+        }
+
+        delete workers;
         closeSocket(proxySocket);
         cleanupWinsock();
     }
+
+    inline int getSocket() const
+    {
+        return proxySocket;
+    }
 private:
-    int clientSocket;
-    int serverSocket;
     int proxySocket;
+
+    struct ThreadStructure {
+        std::thread thread;
+        int clientSocket;
+        int serverSocket;
+    };
+
+    std::vector<ThreadStructure>* workers;
 
     void makeRandomChanges(char* buffer, int length) {
         srand(time(0));
         int index = rand() % length;
         buffer[index] = static_cast<char>((buffer[index] + rand() % 26) % 127);
-        std::cout << "Making changes: Changed buffer at index " << index << std::endl;
+        std::cout << "PROXY: Making changes -> Changed buffer at index " << index << std::endl;
     }
 
     bool shouldIChangeVariable(){
@@ -122,12 +139,26 @@ private:
 
 int main()
 {
-    Proxy proxy;
-    proxy.listenClient();
+#ifdef _WIN32
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
+#else
+    signal(SIGINT, signalHandler);
+#endif
+    Proxy* proxy;
+    try {
+        proxy = new Proxy();
+        supportThread = new std::thread(CtrlHandler::closeSocketThread, proxy->getSocket());
+        proxy->startUp();
+    } catch(SocketUtil::SOCKET_ERRORS err) {
+        std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    }
 
-    proxy.connectToServer();
+    if (proxy) {
+        delete proxy;
+    }
 
-    proxy.passingData();
-
+    shouldSupportThreadStop.store(true);
+    supportThread->join();
+    delete supportThread;
     return 0;
 }

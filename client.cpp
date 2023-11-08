@@ -1,11 +1,12 @@
 #include "headers/socket_utils.h"
+#include "headers/ctrl_handler.h"
 #include "headers/other.h"
 
 class Client : private SocketUtil
 {
 public:
     Client(){
-        std::cout << "STARTING CLIENT" << std::endl;
+        std::cout << "CLIENT: STARTING" << std::endl;
 
         WSAStartUp();
 
@@ -19,72 +20,92 @@ public:
     void sendDataWithCheckSum(){
         char responceBuffer[sizeof(bool) + 1];
 
-        while (true) {
+        while (!ctrlCClicked.load()) {
             DataPackage dataToSend;
 
-            std::cout << "Please enter string to pass: " << std::endl;
+            std::cout << "CLIENT: Please enter string to pass: " << std::endl;
             std::cin.getline(dataToSend.buffer, MAX_BUFFER_SIZE);
 
             dataToSend.number = 1234567890;
             dataToSend.checksum = calculateXORChecksum(dataToSend.buffer, strlen(dataToSend.buffer), dataToSend.number);
 
             char buffer[sizeof(dataToSend)];
+
             memcpy(buffer, &dataToSend, sizeof(dataToSend));
 
             if (send(clientSocket, buffer, sizeof(buffer), 0) > 0)
             {
-                std::cout << "SUCCESSfULLY SENT" << std::endl;
+                std::cout << "CLIENT: SUCCESSfULLY SENT" << std::endl;
             } else {
-                std::cerr << "SERVER: dead" << std::endl;
+                std::cerr << "CLIENT: SERVER: dead" << std::endl;
                 break;
             }
 
-            // start receiving from server
             if (recv(clientSocket, responceBuffer, sizeof(responceBuffer), 0) > 0)
             {
-                std::cout << "Has received responce from server" << std::endl;
+                std::cout << "CLIENT: Has received responce from server" << std::endl;
             } else {
-                std::cout << "Server has no responce" << std::endl;
+                std::cout << "CLIENT: Server has no responce" << std::endl;
                 break;
             }
 
-            std::cout << responceBuffer<< std::endl;
             if (strcmp(responceBuffer, "1") == 0)
             {
-                std::cout << "Message wasnt changed on his way" << std::endl;
+                std::cout << "CLIENT: Message wasnt changed on his way" << std::endl;
             } else if (strcmp(responceBuffer, "0") == 0) {
-                std::cout << "Message was changed; Checksum hadned matched" << std::endl;
+                std::cout << "CLIENT: Message was changed -> Checksum hadned matched" << std::endl;
             } else {
-                std::cout << "Undefined message" << std::endl;
+                std::cout << "CLIENT: Undefined message" << std::endl;
                 break;
             }
         }
     };
 
-    void forceCleanUpProgram() override
-    {
-        std::cout << "CLIENT: SHUTTING DOWN FORCEFULLY" << std::endl;
-        closeSocket(clientSocket);
-        cleanupWinsock();
-        exit(1);
-    }
-
     ~Client(){
-        std::cout << "CLIENT: SHUTTING DOWN NORMALLY" << std::endl;
-        closeSocket(clientSocket);
+        std::cout << "CLIENT: SHUTTING DOWN" << std::endl;
+        if (clientSocket > 0)
+        {
+            closeSocket(clientSocket);
+        }
         cleanupWinsock();
     };
 
     Client(const Client &) = delete;
 
 	Client &operator=(const Client &) = delete;
+
+    inline const int getSocket(){
+        return clientSocket;
+    }
 private:
     int clientSocket;
-    bool shouldStop;
 };
 
-int main(){
-    Client client;
-    client.sendDataWithCheckSum();
+int main()
+{
+#ifdef _WIN32
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
+#else
+    signal(SIGINT, signalHandler);
+#endif
+
+    bool exceptionCaught = false;
+    Client* client;
+    try {
+        client = new Client();
+        supportThread = new std::thread(CtrlHandler::closeSocketThread, client->getSocket());
+        client->sendDataWithCheckSum();
+    } catch(SocketUtil::SOCKET_ERRORS err) {
+        std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    }
+
+    if (client) {
+        delete client;
+    }
+
+    shouldSupportThreadStop.store(true);
+    supportThread->join();
+    delete supportThread;
+    
     return 0;
 }

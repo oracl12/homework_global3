@@ -1,4 +1,5 @@
 #include "headers/socket_utils.h"
+#include "headers/ctrl_handler.h"
 
 class Server : private SocketUtil
 {
@@ -15,42 +16,33 @@ public:
         listenToSocket(serverSocket);
 
         std::clog << "Server is listening on port " << SERVER_PORT << "..." << std::endl;
+
+        clients = new std::vector<std::pair<std::thread, int>>();
     };
 
     void runServer() {
-        std::cout << "WE ARE IN RUNSERVER" << std::endl;
-        sockaddr_in clientAddr;
+        while (!ctrlCClicked.load()) {
+            std::cout << "WE ARE IN RUNSERVER" << std::endl;
 
-        #ifdef __WIN32
-        int clientAddrLen = sizeof(clientAddr);
-        #else
-        socklen_t clientAddrLen = sizeof(clientAddr);
-        #endif
-        clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrLen);
+            int clientSocket = acceptConnection(serverSocket);
 
-        if (clientSocket == INVALID_SOCKET)
-        {
-            std::cerr << "Error accepting connection." << std::endl;
-            SleepS(3000);
-            return;
+            std::clog << "Client connected." << std::endl;
+
+            clients->push_back({ std::thread(receiveAndCheckData, this, std::ref(clientSocket)), clientSocket });
         }
-
-        std::clog << "Client connected." << std::endl;
     }
 
-    void receiveAndCheckData() {
+    void receiveAndCheckData(int& clientSocket) {
         std::cout << "WE ARE RECEIVING" << std::endl;
-        while (1)
+        while (!ctrlCClicked.load())
         {
             char buffer[sizeof(DataPackage)];
             DataPackage receivedData;
 
-            int bytesReceived = recv(clientSocket, buffer, sizeof(DataPackage), 0);
-            
-            if (bytesReceived == -1) {
+            if (recv(clientSocket, buffer, sizeof(DataPackage), 0) == -1) {
                 std::cerr << "Failed to receive data package." << std::endl;
                 closeSocket(clientSocket);
-                return;
+                break;
             }
 
             memcpy(&receivedData, buffer, sizeof(DataPackage));
@@ -80,38 +72,58 @@ public:
         }
     };
 
-    void forceCleanUpProgram() override
-    {
-        std::cout << "SERVER: SHUTTING DOWN FORCEFULLY" << std::endl;
-        closeSocket(serverSocket);
-        closeSocket(clientSocket);
-        cleanupWinsock();
-        exit(1);
-    }
-
     ~Server(){
         std::cout << "SERVER: SHUTTING DOWN NORMALLY" << std::endl;
+
+        for (auto& pair: *clients) {
+            closeSocket(pair.second);
+            if (pair.first.joinable()) {
+                pair.first.join();
+            }
+        }
+
         closeSocket(serverSocket);
-        closeSocket(clientSocket);
         cleanupWinsock();
+        delete clients;
     };
 
 	Server(const Server &) = delete;
 
 	Server &operator=(const Server &) = delete;
 
+    inline int getSocket() const
+    {
+        return serverSocket;
+    }
 private:
     int serverSocket;
-    int clientSocket;
-
-    bool checkIfCheckSumIsCorrect(){
-        return true;
-    }
+    std::vector<std::pair<std::thread, int>> *clients;
 };
 
-int main(){
-    Server server;
-    server.runServer();
-    server.receiveAndCheckData();
+int main()
+{
+#ifdef _WIN32
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
+#else
+    signal(SIGINT, signalHandler);
+#endif
+
+    bool exceptionCaught = false;
+    Server* server;
+    try {
+        server = new Server();
+        supportThread = new std::thread(CtrlHandler::closeSocketThread, server->getSocket());
+        server->runServer();
+    } catch(SocketUtil::SOCKET_ERRORS err) {
+        std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    }
+
+    if (server) {
+        delete server;
+    }
+
+    shouldSupportThreadStop.store(true);
+    supportThread->join();
+    delete supportThread;
     return 0;
 }
