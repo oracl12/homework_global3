@@ -86,7 +86,7 @@ void SocketUtil::connectToSocket(int socket, int port)
         }
         
         std::cout << "SocketUtils: Try connecting to server again..." << std::endl;
-        SleepS(150);
+        SleepS(350);
         tryiesCount++;
     }
 };

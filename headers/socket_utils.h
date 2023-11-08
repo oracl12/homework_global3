@@ -7,15 +7,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #endif
 
 #include <iostream>
 #include <ctime>
 #include <vector>
 #include <thread>
-#include <mutex>
+#include <functional>
 #include "other.h"
 
 #ifndef INVALID_SOCKET

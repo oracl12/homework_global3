@@ -10,6 +10,7 @@ std::thread* supportThread;
 class CtrlHandler
 {
 public:
+#ifdef __WIN32
     static BOOL ctrlHandler(DWORD fdwCtrlType) {
         switch (fdwCtrlType) {
             case CTRL_C_EVENT:
@@ -20,6 +21,14 @@ public:
                 return FALSE;
         }
     }
+#else
+    static void signalHandler(int signum) {
+        if (signum == SIGINT) {
+            std::cout << "CtrlHandler: Ctrl+C received!" << std::endl;
+            ctrlCClicked.store(true);
+        }
+    }
+#endif
 
     static void closeSocketThread(int socket) {
         SleepS(150);

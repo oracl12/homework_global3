@@ -33,7 +33,7 @@ public:
 
             int serverSocket = connectToServer();
 
-            workers->push_back( { std::thread(passingData, this, std::ref(clientSocket), std::ref(serverSocket)), clientSocket, serverSocket });
+            workers->push_back({ std::thread([this, &clientSocket, &serverSocket]() { passingData(clientSocket, serverSocket); }), clientSocket, serverSocket });
         }
     }
 
@@ -142,7 +142,7 @@ int main()
 #ifdef _WIN32
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
 #else
-    signal(SIGINT, signalHandler);
+    signal(SIGINT, CtrlHandler::signalHandler);
 #endif
     Proxy* proxy;
     try {

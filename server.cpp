@@ -28,7 +28,7 @@ public:
 
             std::clog << "Client connected." << std::endl;
 
-            clients->push_back({ std::thread(receiveAndCheckData, this, std::ref(clientSocket)), clientSocket });
+            clients->push_back({ std::thread([this, &clientSocket]() { receiveAndCheckData(clientSocket); }), clientSocket });
         }
     }
 
@@ -105,7 +105,7 @@ int main()
 #ifdef _WIN32
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
 #else
-    signal(SIGINT, signalHandler);
+    signal(SIGINT, CtrlHandler::signalHandler);
 #endif
 
     bool exceptionCaught = false;

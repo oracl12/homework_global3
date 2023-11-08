@@ -86,7 +86,7 @@ int main()
 #ifdef _WIN32
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
 #else
-    signal(SIGINT, signalHandler);
+    signal(SIGINT, CtrlHandler::signalHandler);
 #endif
 
     bool exceptionCaught = false;
