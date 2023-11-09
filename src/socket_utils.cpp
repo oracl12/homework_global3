@@ -81,12 +81,12 @@ void SocketUtil::connectToSocket(int socket, int port)
     int tryiesCount = 0;
     while (connect(socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
-        if (tryiesCount > 4) {
+        if (tryiesCount > 6) {
             throw SOCKET_ERRORS::CONNECTION_FAILURE;
         }
         
         std::cout << "SocketUtils: Try connecting to server again..." << std::endl;
-        SleepS(350);
+        SleepS(1500);
         tryiesCount++;
     }
 };

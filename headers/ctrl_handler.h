@@ -22,7 +22,7 @@ public:
         }
     }
 #else
-    static void signalHandler(int signum) {
+    static void ctrlHandler(int signum) {
         if (signum == SIGINT) {
             std::cout << "CtrlHandler: Ctrl+C received!" << std::endl;
             ctrlCClicked.store(true);
@@ -31,7 +31,6 @@ public:
 #endif
 
     static void closeSocketThread(int socket) {
-        SleepS(150);
         std::cout << "SUPPORT THREAD: thread start" << std::endl;
         while (!shouldSupportThreadStop.load()) {
             if (ctrlCClicked.load()) {

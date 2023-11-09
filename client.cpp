@@ -24,6 +24,7 @@ public:
             DataPackage dataToSend;
 
             std::cout << "CLIENT: Please enter string to pass: " << std::endl;
+            // cannot terminate on linux without entering some text
             std::cin.getline(dataToSend.buffer, MAX_BUFFER_SIZE);
 
             dataToSend.number = 1234567890;
@@ -86,7 +87,7 @@ int main()
 #ifdef _WIN32
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
 #else
-    signal(SIGINT, CtrlHandler::signalHandler);
+    signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
 
     bool exceptionCaught = false;
@@ -94,6 +95,7 @@ int main()
     try {
         client = new Client();
         supportThread = new std::thread(CtrlHandler::closeSocketThread, client->getSocket());
+        SleepS(150);
         client->sendDataWithCheckSum();
     } catch(SocketUtil::SOCKET_ERRORS err) {
         std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;

@@ -1,7 +1,9 @@
-# TODO: dont forget to push Makefile will be also shadowed
-# *
-# !*/
-# !*.*
+# ignore all files without extension(executables) except makefile and gitignore itself
+*
+!/**/
+!*.*
+!Makefile
+!.gitignore
 
 .vscode
 *.exe

@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <signal.h>
+#include <termios.h>
 #endif
 
 #include <iostream>

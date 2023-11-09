@@ -36,6 +36,7 @@ public:
         std::cout << "WE ARE RECEIVING" << std::endl;
         while (!ctrlCClicked.load())
         {
+            std::cout << "WER ARE IN LOAD" << std::endl;
             char buffer[sizeof(DataPackage)];
             DataPackage receivedData;
 
@@ -105,7 +106,7 @@ int main()
 #ifdef _WIN32
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler::ctrlHandler, TRUE);
 #else
-    signal(SIGINT, CtrlHandler::signalHandler);
+    signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
 
     bool exceptionCaught = false;
@@ -113,6 +114,7 @@ int main()
     try {
         server = new Server();
         supportThread = new std::thread(CtrlHandler::closeSocketThread, server->getSocket());
+        SleepS(150);
         server->runServer();
     } catch(SocketUtil::SOCKET_ERRORS err) {
         std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
