@@ -53,6 +53,7 @@ public:
         char buffer[sizeof(DataPackage)];
         char responceBuffer[sizeof(bool) + 1];
         int bytesRead;
+
         while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0)
         {
             if (ctrlCClicked.load()) {
@@ -61,7 +62,8 @@ public:
             std::cout << "Proxy: has received data from client" << std::endl;
 
             if (shouldIChangeVariable()) {
-                makeRandomChanges(buffer, sizeof(DataPackage));
+                DataPackage* dataPackageInterface = reinterpret_cast<DataPackage*>(buffer);
+                makeRandomChanges(dataPackageInterface);
             }
 
             if (send(serverSocket, buffer, bytesRead, 0) > 0)
@@ -124,16 +126,19 @@ private:
 
     std::vector<ThreadStructure>* workers;
 
-    void makeRandomChanges(char* buffer, int length) {
-        srand(time(0));
-        int index = rand() % length;
-        buffer[index] = static_cast<char>((buffer[index] + rand() % 26) % 127);
-        std::cout << "PROXY: Making changes -> Changed buffer at index " << index << std::endl;
+    void makeRandomChanges(DataPackage* dataPackage) {
+        srand(time(0)); // setting seed to be current time in seconds
+
+        dataPackage->checksum += rand() % 10;
+        dataPackage->number += rand() % 10;
+        int index = rand() % strlen(dataPackage->buffer); // selecting random index in buffer
+        dataPackage->buffer[index] = rand() % 128; // changing char at this index
+        std::cout << "PROXY: Making changes" << std::endl;
     }
 
     bool shouldIChangeVariable(){
         srand(time(0));
-        return (rand() % 5 + 1) == 3; // probability 1/5
+        return (rand() % 5 + 1) == 3; // probability 1/5 -> selecting one number of 5(in our case its 3)
     }
 };
 
@@ -144,6 +149,7 @@ int main()
 #else
     signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
+    
     Proxy* proxy;
     try {
         proxy = new Proxy();

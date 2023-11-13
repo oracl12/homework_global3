@@ -36,7 +36,6 @@ public:
         std::cout << "WE ARE RECEIVING" << std::endl;
         while (!ctrlCClicked.load())
         {
-            std::cout << "WER ARE IN LOAD" << std::endl;
             char buffer[sizeof(DataPackage)];
             DataPackage receivedData;
 
@@ -54,11 +53,12 @@ public:
 
             char responceBuffer[sizeof(bool) + 1];
 
-            // check if matches
             if (calculateXORChecksum(receivedData.buffer, strlen(receivedData.buffer), receivedData.number) != receivedData.checksum) {
+                // if failed then we are sending 0 - false
                 strcpy(responceBuffer, "0");
                 std::cout << "Checksum doesnt match" << std::endl;
             } else {
+                // else 1 - true
                 strcpy(responceBuffer, "1");
             }
 
@@ -109,7 +109,6 @@ int main()
     signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
 
-    bool exceptionCaught = false;
     Server* server;
     try {
         server = new Server();

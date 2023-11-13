@@ -27,6 +27,14 @@ public:
             // cannot terminate on linux without entering some text
             std::cin.getline(dataToSend.buffer, MAX_BUFFER_SIZE);
 
+            if (std::cin.fail()) // forgot to check overflow 
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::cout << "CLIENT: Input overflow -> please enter lesser number of symbols" << std::endl;
+                continue;
+            }
+
             dataToSend.number = 1234567890;
             dataToSend.checksum = calculateXORChecksum(dataToSend.buffer, strlen(dataToSend.buffer), dataToSend.number);
 
@@ -90,7 +98,6 @@ int main()
     signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
 
-    bool exceptionCaught = false;
     Client* client;
     try {
         client = new Client();

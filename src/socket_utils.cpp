@@ -111,10 +111,12 @@ void SocketUtil::cleanupWinsock() {
 unsigned int SocketUtil::calculateXORChecksum(const char *data, size_t dataLength, unsigned long number) {
     unsigned int checksum = 0;
 
+    // fisrly we are xor-ing our buffer
     for (size_t i = 0; i < dataLength; ++i) {
         checksum ^= data[i];
     }
 
+    // then its time for number -> taking interface of number as char[] and xor-ing
     unsigned char *numberBytes = reinterpret_cast<unsigned char *>(&number);
     for (size_t i = 0; i < sizeof(unsigned long); ++i) {
         checksum ^= numberBytes[i];
