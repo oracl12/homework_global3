@@ -24,10 +24,10 @@ public:
             DataPackage dataToSend;
 
             std::cout << "CLIENT: Please enter string to pass: " << std::endl;
-            // cannot terminate on linux without entering some text
+            // cannot terminate without entering some text
             std::cin.getline(dataToSend.buffer, MAX_BUFFER_SIZE);
 
-            if (std::cin.fail()) // forgot to check overflow 
+            if (std::cin.fail())
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -72,8 +72,9 @@ public:
 
     ~Client(){
         std::cout << "CLIENT: SHUTTING DOWN" << std::endl;
-        if (clientSocket > 0)
+        if (!clientSocket) // if not 0(not initialized)
         {
+            shutdown(clientSocket, DISALLOW_BOTH);
             closeSocket(clientSocket);
         }
         cleanupWinsock();
@@ -87,7 +88,7 @@ public:
         return clientSocket;
     }
 private:
-    int clientSocket;
+    int clientSocket = 0;
 };
 
 int main()
@@ -98,23 +99,25 @@ int main()
     signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
 
-    Client* client;
+    std::unique_ptr<Client> client;
     try {
-        client = new Client();
+        client = std::make_unique<Client>();
         supportThread = new std::thread(CtrlHandler::closeSocketThread, client->getSocket());
         SleepS(150);
         client->sendDataWithCheckSum();
-    } catch(SocketUtil::SOCKET_ERRORS err) {
-        std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    } catch(const SocketUtil::SOCKET_ERRORS& err) {
+        std::cout << "Socket error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    } catch(const std::bad_alloc& e) {
+        std::cerr << "Failed to create object: " << e.what() << std::endl;
+    }  catch(const std::exception& e) {
+        std::cerr << "Undefined error occurred: " << e.what() << std::endl;
     }
 
-    if (client) {
-        delete client;
+    if (supportThread) {
+        shouldSupportThreadStop.store(true);
+        supportThread->join();
+        delete supportThread;
     }
-
-    shouldSupportThreadStop.store(true);
-    supportThread->join();
-    delete supportThread;
     
     return 0;
 }

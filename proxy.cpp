@@ -54,12 +54,19 @@ public:
         char responceBuffer[sizeof(bool) + 1];
         int bytesRead;
 
-        while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0)
+        while (!ctrlCClicked.load())
         {
             if (ctrlCClicked.load()) {
                 break;
             }
-            std::cout << "Proxy: has received data from client" << std::endl;
+
+            int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
+            if (bytesRead > 0) {
+                std::cout << "Proxy: has received data from client" << std::endl;
+            } else {
+                std::cout << "Proxy: Client has no responce" << std::endl;
+                break;
+            }
 
             if (shouldIChangeVariable()) {
                 DataPackage* dataPackageInterface = reinterpret_cast<DataPackage*>(buffer);
@@ -99,16 +106,21 @@ public:
         std::cout << "PROXY: SHUTTING DOWN NORMALLY" << std::endl;
 
         for (auto& threadStruct: *workers) {
+            shutdown(threadStruct.clientSocket, DISALLOW_BOTH);
+            shutdown(threadStruct.serverSocket, DISALLOW_BOTH);
             closeSocket(threadStruct.clientSocket);
-            closeSocket(threadStruct.serverSocket); // place outside
+            closeSocket(threadStruct.serverSocket);
+
             if (threadStruct.thread.joinable()) {
                 threadStruct.thread.join();
             }
         }
-
-        delete workers;
-        closeSocket(proxySocket);
+        if (!proxySocket) // if not 0(not initialized)
+        {
+            closeSocket(proxySocket);
+        }
         cleanupWinsock();
+        delete workers;
     }
 
     inline int getSocket() const
@@ -116,7 +128,7 @@ public:
         return proxySocket;
     }
 private:
-    int proxySocket;
+    int proxySocket = 0;
 
     struct ThreadStructure {
         std::thread thread;
@@ -150,22 +162,24 @@ int main()
     signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
     
-    Proxy* proxy;
+    std::unique_ptr<Proxy> proxy;
     try {
-        proxy = new Proxy();
+        proxy = std::make_unique<Proxy>();
         supportThread = new std::thread(CtrlHandler::closeSocketThread, proxy->getSocket());
         SleepS(150);
         proxy->startUp();
-    } catch(SocketUtil::SOCKET_ERRORS err) {
-        std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    } catch(const SocketUtil::SOCKET_ERRORS& err) {
+        std::cout << "Socket error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    } catch(const std::bad_alloc& e) {
+        std::cerr << "Failed to create object: " << e.what() << std::endl;
+    }  catch(const std::exception& e) {
+        std::cerr << "Undefined error occurred: " << e.what() << std::endl;
     }
 
-    if (proxy) {
-        delete proxy;
+    if (supportThread) {
+        shouldSupportThreadStop.store(true);
+        supportThread->join();
+        delete supportThread;
     }
-
-    shouldSupportThreadStop.store(true);
-    supportThread->join();
-    delete supportThread;
     return 0;
 }

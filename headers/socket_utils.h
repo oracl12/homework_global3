@@ -3,6 +3,7 @@
 #ifdef __WIN32
 #include <winsock2.h>
 #include <windows.h>
+#define DISALLOW_BOTH SD_BOTH
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -10,6 +11,7 @@
 #include <string.h>
 #include <signal.h>
 #include <termios.h>
+#define DISALLOW_BOTH SHUT_RDWR
 #endif
 
 #include <iostream>

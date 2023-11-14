@@ -5,7 +5,7 @@ class Server : private SocketUtil
 {
 public:
     Server() {
-        std::clog << "STARTING SERVER" << std::endl;
+        std::clog << "SERVER: STARTING" << std::endl;
 
         WSAStartUp();
 
@@ -15,7 +15,7 @@ public:
 
         listenToSocket(serverSocket);
 
-        std::clog << "Server is listening on port " << SERVER_PORT << "..." << std::endl;
+        std::clog << "Server: istening on port " << SERVER_PORT << "..." << std::endl;
 
         clients = new std::vector<std::pair<std::thread, int>>();
     };
@@ -33,12 +33,12 @@ public:
     }
 
     void receiveAndCheckData(int& clientSocket) {
-        std::cout << "WE ARE RECEIVING" << std::endl;
         while (!ctrlCClicked.load())
         {
             char buffer[sizeof(DataPackage)];
             DataPackage receivedData;
 
+            std::cout << "WE ARE RECEIVING" << std::endl;
             if (recv(clientSocket, buffer, sizeof(DataPackage), 0) == -1) {
                 std::cerr << "Failed to receive data package." << std::endl;
                 closeSocket(clientSocket);
@@ -61,7 +61,7 @@ public:
                 // else 1 - true
                 strcpy(responceBuffer, "1");
             }
-
+            std::cout << "WE ARE SENDING BACK RESPONSE" << std::endl;
             if (send(clientSocket, responceBuffer, sizeof(responceBuffer), 0) > 0)
             {
                 std::cout << "Successfully sent responce back" << std::endl;
@@ -77,13 +77,16 @@ public:
         std::cout << "SERVER: SHUTTING DOWN NORMALLY" << std::endl;
 
         for (auto& pair: *clients) {
+            shutdown(pair.second, DISALLOW_BOTH);
             closeSocket(pair.second);
             if (pair.first.joinable()) {
                 pair.first.join();
             }
         }
 
-        closeSocket(serverSocket);
+        if (!serverSocket) { // if not 0(not initialized)
+            closeSocket(serverSocket);
+        }
         cleanupWinsock();
         delete clients;
     };
@@ -97,7 +100,7 @@ public:
         return serverSocket;
     }
 private:
-    int serverSocket;
+    int serverSocket = 0;
     std::vector<std::pair<std::thread, int>> *clients;
 };
 
@@ -109,22 +112,24 @@ int main()
     signal(SIGINT, CtrlHandler::ctrlHandler);
 #endif
 
-    Server* server;
+    std::unique_ptr<Server> server;
     try {
-        server = new Server();
+        server = std::make_unique<Server>();
         supportThread = new std::thread(CtrlHandler::closeSocketThread, server->getSocket());
         SleepS(150);
         server->runServer();
-    } catch(SocketUtil::SOCKET_ERRORS err) {
-        std::cout << "An error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    } catch(const SocketUtil::SOCKET_ERRORS& err) {
+        std::cout << "Socket error occurred: " << SocketUtil::SOCKET_ERRORS_TEXT[err] << std::endl;
+    } catch(const std::bad_alloc& e) {
+        std::cerr << "Failed to create object: " << e.what() << std::endl;
+    }  catch(const std::exception& e) {
+        std::cerr << "Undefined error occurred: " << e.what() << std::endl;
+    }
+    if (supportThread) {
+        shouldSupportThreadStop.store(true);
+        supportThread->join();
+        delete supportThread;
     }
 
-    if (server) {
-        delete server;
-    }
-
-    shouldSupportThreadStop.store(true);
-    supportThread->join();
-    delete supportThread;
     return 0;
 }

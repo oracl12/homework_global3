@@ -34,8 +34,9 @@ public:
         std::cout << "SUPPORT THREAD: thread start" << std::endl;
         while (!shouldSupportThreadStop.load()) {
             if (ctrlCClicked.load()) {
-                // closing socket here terminates threads that are on wait cause of send/recv
+                // closing socket here terminates threads that are on wait cause of send/recv/accept...etc
                 std::cout << "SUPPORT THREAD: Closing socket..." << std::endl;
+                shutdown(socket, DISALLOW_BOTH);
                 SocketUtil::closeSocket(socket);
                 break;
             }
